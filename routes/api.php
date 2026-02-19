@@ -45,6 +45,8 @@ Route::get('/cards/download/{filename}', [CardController::class, 'download'])
 
 Route::middleware(['verify.private.token'])->group(function () {
 
+    Route::get('/me', [UserController::class, 'me']);
+
     /**
      * INBOX - Gestion de la boîte de réception
      */

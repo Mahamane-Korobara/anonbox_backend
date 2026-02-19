@@ -12,7 +12,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Middleware global a ne pas oublier d'ajouter 
+        $middleware->alias([
+            'verify.private.token' => \App\Http\Middleware\VerifyPrivateToken::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

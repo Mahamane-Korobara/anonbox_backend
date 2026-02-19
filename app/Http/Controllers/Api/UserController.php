@@ -81,4 +81,18 @@ class UserController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Récupérer les infos de l'utilisateur connecté
+     */
+    public function me(Request $request)
+    {
+        // L'utilisateur est déjà injecté dans la requête par le middleware verify.private.token
+        $user = $request->user();
+
+        return (new UserResource($user))->additional([
+            'success' => true,
+            'unread_count' => $user->messages()->where('status', 'unread')->count(),
+        ]);
+    }
 }

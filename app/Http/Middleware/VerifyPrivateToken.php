@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class VerifyPrivateToken
@@ -21,7 +22,6 @@ class VerifyPrivateToken
     {
         $privateToken = $request->header('X-Private-Token');
 
-        // Vérifier que le header est présent
         if (!$privateToken) {
             return response()->json([
                 'success' => false,
@@ -29,7 +29,6 @@ class VerifyPrivateToken
             ], 401);
         }
 
-        // Vérifier que le token existe et est valide
         $user = User::where('private_token', $privateToken)->first();
 
         if (!$user) {
@@ -39,7 +38,12 @@ class VerifyPrivateToken
             ], 401);
         }
 
-        // Ajouter l'utilisateur au request pour utilisation dans les controllers
+        // --- LA LIGNE MAGIQUE ---
+        // On définit l'utilisateur pour la session actuelle de la requête
+        Auth::login($user);
+
+        // Optionnel : tu peux garder le merge si tu y tiens, 
+        // mais setUser suffit pour faire marcher $request->user()
         $request->merge(['authenticated_user' => $user]);
 
         return $next($request);

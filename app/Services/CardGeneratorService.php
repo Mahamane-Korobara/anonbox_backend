@@ -19,9 +19,13 @@ class CardGeneratorService
         $height = 1920;
         $padding = 80;
 
-        // Création du canvas
-        $image = Image::create($width, $height);
-        $image->fill('linear-gradient(135deg, #667eea 0%, #764ba2 100%)');
+        // --- CRÉATION DU CANVAS V3 ---
+        // On crée une image de base 1x1 qu'on resize (méthode la plus fiable en v3 pour un canvas vide)
+        $image = Image::read(base64_decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="))
+            ->resize($width, $height);
+
+        // Remplissage du fond (Couleur solide recommandée pour GD v3)
+        $image->fill('#667eea');
 
         // Header (Logo + Handle)
         $this->drawHeader($image, $user, $width);
@@ -31,27 +35,26 @@ class CardGeneratorService
         $this->drawBubble($image, 'Message anonyme', $message->anonymous_content, $messageY, $width, $padding, '#FFFFFF', '#333333');
 
         // Réponse
-        $responseY = $messageY + 480;
-        $this->drawBubble($image, 'Ma réponse', $message->response_content, $responseY, $width, $padding, 'rgba(102, 126, 234, 0.15)', '#1a202c', true);
+        $responseY = $messageY + 500;
+        $this->drawBubble($image, 'Ma réponse', $message->response_content, $responseY, $width, $padding, '#f8fafc', '#1a202c', true);
 
         // Footer (CTA)
         $this->drawFooter($image, $user, $width, $height);
 
-        // auvegarde
+        // Sauvegarde
         $filename = 'card_' . $user->id . '_' . $message->id . '_' . Str::random(8) . '.png';
-        $savePath = public_path("images/cards/{$filename}");
+        $directory = public_path("images/cards");
+        $savePath = $directory . "/{$filename}";
 
-        // S'assurer que le dossier existe
-        if (!file_exists(dirname($savePath))) {
-            mkdir(dirname($savePath), 0755, true);
+        if (!file_exists($directory)) {
+            mkdir($directory, 0755, true);
         }
 
-        $image->save($savePath, 90);
+        // En v3, on encode avant de sauvegarder
+        $image->toPng()->save($savePath);
 
         return "images/cards/{$filename}";
     }
-
-    // --- Helpers privés pour alléger le code principal ---
 
     private function drawHeader($image, $user, $width)
     {
@@ -74,48 +77,48 @@ class CardGeneratorService
 
     private function drawBubble($image, $label, $content, $y, $width, $padding, $bgColor, $textColor, $border = false)
     {
-        $image->drawRectangle($padding, $y, $width - $padding, $y + 400, function ($draw) use ($bgColor, $border) {
+        // En v3, drawRectangle utilise une closure pour définir la taille et le style
+        $image->drawRectangle($padding, $y, function ($draw) use ($width, $padding, $bgColor, $border) {
+            $draw->size($width - ($padding * 2), 420); // Largeur et Hauteur
             $draw->background($bgColor);
-            if ($border) $draw->border(3, '#667eea');
+            if ($border) {
+                $draw->border('#4c51bf', 4);
+            }
         });
 
-        // Icone & Label
-        $image->text('💬', $padding + 40, $y + 60, fn($f) => $f->size(48));
-
-        $image->text($label, $padding + 120, $y + 70, function ($font) {
+        // Label
+        $image->text($label, $padding + 60, $y + 50, function ($font) {
             $font->file(public_path('fonts/Poppins-SemiBold.ttf'));
-            $font->size(28);
+            $font->size(30);
             $font->color('#667eea');
-            $font->align('left');
             $font->valign('top');
         });
 
-        // Texte contenu
+        // Texte contenu (wordwrap pour éviter que le texte sorte de la bulle)
         $wrapped = wordwrap($content, 35, "\n", true);
-        $image->text($wrapped, $padding + 40, $y + 150, function ($font) use ($textColor) {
+        $image->text($wrapped, $padding + 60, $y + 130, function ($font) use ($textColor) {
             $font->file(public_path('fonts/Poppins-Regular.ttf'));
-            $font->size(32);
+            $font->size(34);
             $font->color($textColor);
-            $font->align('left');
             $font->valign('top');
-            $font->lineHeight(1.5);
+            $font->lineHeight(1.6);
         });
     }
 
     private function drawFooter($image, $user, $width, $height)
     {
-        $footerY = $height - 200;
+        $footerY = $height - 250;
 
         $image->text('Envoie-moi un message anonyme 👀', $width / 2, $footerY, function ($font) {
             $font->file(public_path('fonts/Poppins-SemiBold.ttf'));
-            $font->size(36);
+            $font->size(38);
             $font->color('#FFFFFF');
             $font->align('center');
         });
 
-        $image->text($user->public_url, $width / 2, $footerY + 70, function ($font) {
+        $image->text($user->public_url, $width / 2, $footerY + 80, function ($font) {
             $font->file(public_path('fonts/Poppins-Bold.ttf'));
-            $font->size(32);
+            $font->size(34);
             $font->color('#FFD700');
             $font->align('center');
         });
