@@ -1,32 +1,38 @@
 <?php
 
-use App\Models\User;
-use App\Models\Prompt;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
+/*
+|--------------------------------------------------------------------------
+| Web Routes - AnonBox
+|--------------------------------------------------------------------------
+|
+| La page publique /u/{handle} est gérée par Next.js.
+| Laravel redirige vers le frontend pour toutes ces URLs.
+|
+| NEXT_PUBLIC_APP_URL doit être défini dans .env Laravel :
+|   FRONTEND_URL=http://localhost:3000
+|
+*/
+
+$frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
+
+// Page d'accueil → Next.js
+Route::get('/', function () use ($frontendUrl) {
+    return redirect($frontendUrl);
 });
 
-Route::get('/u/{handle}', function (Request $request, $handle) {
-    // 1. Trouver l'utilisateur ou erreur 404
-    $user = User::where('handle', $handle)->firstOrFail();
+// ─── Page publique profil → Next.js ───────────────────────────────────────
+// /u/alice       → http://localhost:3000/u/alice
+// /u/alice?q=2   → http://localhost:3000/u/alice?q=2
+Route::get('/u/{handle}', function (string $handle) use ($frontendUrl) {
+    $query = request()->getQueryString(); // preserve ?q=ID
+    $url   = rtrim($frontendUrl, '/') . "/u/{$handle}";
+    if ($query) $url .= "?{$query}";
+    return redirect($url, 301);
+});
 
-    // 2. Vérifier si une question spécifique est demandée (?q=ID)
-    $promptId = $request->query('q');
-    $prompt = null;
-
-    if ($promptId) {
-        $prompt = Prompt::where('id', $promptId)
-            ->where('user_id', $user->id)
-            ->first();
-    }
-
-    // 3. Retourner la vue unique
-    // Si $prompt est null (supprimé ou non demandé), on affichera le formulaire par défaut
-    return view('public_profile', [
-        'user' => $user,
-        'prompt' => $prompt
-    ]);
+// ─── Health check web (optionnel) ────────────────────────────────────────
+Route::get('/health-web', function () {
+    return response()->json(['status' => 'ok', 'layer' => 'web']);
 });
