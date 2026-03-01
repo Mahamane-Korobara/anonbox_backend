@@ -7,38 +7,35 @@ return [
     | Cross-Origin Resource Sharing (CORS) Configuration
     |--------------------------------------------------------------------------
     |
-    | Configuration CORS pour permettre les requêtes depuis Next.js
-    | À adapter selon votre domaine de production
+    | Cette configuration permet à ton frontend Next.js de communiquer 
+    | avec ton API Laravel sans blocage du navigateur.
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    // On ajoute 'login' et 'logout' s'ils ne sont pas déjà préfixés par /api
+    'paths' => ['api/*', 'sanctum/csrf-cookie', 'login', 'logout'],
 
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        'http://localhost:3000',           // Next.js dev
-        'http://127.0.0.1:3000',           // Next.js dev alternative
-        'https://anonbox.com',             // Production frontend
-        'https://www.anonbox.com',         // Production frontend avec www
-        // Ajoutez les autres domaines ici
+        'http://localhost:3000',               // Next.js local
+        'http://127.0.0.1:3000',
+        'https://anonbox.sahelstack.tech',     // Ton domaine de production
+        env('FRONTEND_URL'),                   // Chargement dynamique via .env
     ],
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => [
-        'Content-Type',
-        'X-Requested-With',
-        'Authorization',
-        'X-Private-Token',                 // Header personnalisé pour l'authentification
-        'Accept',
-        'Origin',
-    ],
+    'allowed_headers' => ['*'],                // Plus simple pour éviter les erreurs de headers manquants
 
     'exposed_headers' => [],
 
     'max_age' => 0,
 
-    'supports_credentials' => false,
+    /*
+    | IMPORTANT : Doit être à 'true' pour que les cookies (XSRF-TOKEN, session) 
+    | soient envoyés entre le frontend et l'API.
+    */
+    'supports_credentials' => true,
 
 ];
