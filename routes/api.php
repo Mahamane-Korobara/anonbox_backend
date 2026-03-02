@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\PromptController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\CardController;
+use App\Http\Controllers\Api\ShareCardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -73,6 +74,11 @@ Route::middleware(['verify.private.token'])->group(function () {
     Route::post('/cards/generate', [CardController::class, 'generate']);
     // Note: cleanup devrait être protégé ou déplacé dans une CRON task
     Route::delete('/cards/cleanup', [CardController::class, 'cleanup']);
+
+    /**
+     * SHARES - Upload d'une carte générée côté frontend
+     */
+    Route::post('/shares', [ShareCardController::class, 'store']);
 });
 
 // ========================================

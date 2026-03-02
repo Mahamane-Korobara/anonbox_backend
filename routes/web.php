@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ShareCardPageController;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,6 +17,10 @@ use Illuminate\Support\Facades\Route;
 */
 
 $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
+
+// Page de partage OG (hébergée sur Laravel)
+Route::get('/share/{id}', [ShareCardPageController::class, 'show'])
+    ->where('id', '[a-z0-9]{24}');
 
 // Page d'accueil → Next.js
 Route::get('/', function () use ($frontendUrl) {
