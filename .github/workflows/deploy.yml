@@ -1,0 +1,19 @@
+name: Deploy AnonBox
+
+on:
+  push:
+    branches: [main] # Se déclenche quand tu push sur main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # On lance le script de déploiement qu'on a préparé sur le serveur
+            /var/www/anonbox/deploy.sh
