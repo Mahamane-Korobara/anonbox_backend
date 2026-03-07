@@ -127,6 +127,173 @@ sudo -u [USER] php artisan cache:clear
 - **Test Backup** : `sudo [RACINE]/backup.sh` puis `ls -lh [RACINE]/backups` (taille > 0).
 - **Test Restauration** : Essaye d'importer un backup dans une base vide.
 
+## Phase 8️⃣ : Créer le script deploy.sh
+
+Édite le script :
+
+```bash
+nano /var/www/anonbox/deploy.sh
+```
+
+Voici un exemple de contenu pour un projet Laravel :
+
+```bash
+#!/bin/bash
+
+# Variables
+APP_DIR="/var/www/anonbox"
+REPO_URL="git@github.com:Mahamane-Korobara/anonbox_backend.git"
+BRANCH="main"
+RELEASE_DIR="$APP_DIR/releases/$(date +%Y%m%d%H%M%S)"
+
+# Créer le dossier de release
+mkdir -p $RELEASE_DIR
+
+# Cloner le repo
+git clone -b $BRANCH $REPO_URL $RELEASE_DIR
+
+# Copier les fichiers persistants
+cp $APP_DIR/shared/.env $RELEASE_DIR/.env
+cp -r $APP_DIR/shared/storage $RELEASE_DIR/storage
+
+# Installer les dépendances
+cd $RELEASE_DIR
+composer install --no-dev --optimize-autoloader
+
+# Migration Laravel
+php artisan migrate --force
+
+# Mettre à jour le lien symbolique
+ln -sfn $RELEASE_DIR $APP_DIR/current
+
+# Redémarrer le serveur si nécessaire (php-fpm, queue, etc.)
+# systemctl restart php8.2-fpm
+
+echo "Déploiement terminé !"
+```
+
+⚠️ **Important** :
+
+- Ton `.env` et `storage` doivent rester dans `shared/`
+- `ln -sfn` change le lien symbolique `current` pour pointer sur la nouvelle release
+- Tu peux adapter le restart des services selon ton serveur
+
+## Phase 9️⃣ : Préparer SSH pour GitHub Actions
+
+### 9.1 Générer une clé SSH sans passphrase
+
+```bash
+ssh-keygen -t ed25519 -C "github-deploy" -f ~/.ssh/id_ed25519_github
+```
+
+Quand il demande la passphrase → laisser vide (ENTRÉE)
+
+- **Clé privée** : `~/.ssh/id_ed25519_github` → à mettre sur GitHub
+- **Clé publique** : `~/.ssh/id_ed25519_github.pub` → à mettre sur VPS
+
+### 9.2 Ajouter la clé publique sur le VPS
+
+```bash
+mkdir -p ~/.ssh
+nano ~/.ssh/authorized_keys
+```
+
+Colle la clé publique (ED25519) :
+
+```
+ssh-ed25519 AAAAC3Nz… ton_email
+```
+
+Puis :
+
+```bash
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/authorized_keys
+```
+
+### 9.3 Ajouter la clé privée sur GitHub
+
+Dépôt → Settings → Secrets → Actions → New repository secret
+
+- **Name** : `SSH_PRIVATE_KEY`
+- **Secret** : contenu de `~/.ssh/id_ed25519_github`
+
+- **Name** : `HOST`
+- **Secret** : IP de ton VPS (ex. 72.61.194.76)
+
+### 9.4 Tester la connexion depuis ton PC
+
+```bash
+ssh -i ~/.ssh/id_ed25519_github root@72.61.194.76
+```
+
+Si tu arrives sans mot de passe → ✅ tout est prêt pour GitHub Actions.
+
+## Phase 🔟 : Créer le workflow GitHub Actions
+
+Dans ton projet, crée :
+
+`.github/workflows/deploy.yml`
+
+Contenu :
+
+```yaml
+name: Deploy AnonBox
+
+on:
+    push:
+        branches: [main] # Déclenchement sur push main
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Deploy via SSH
+              uses: appleboy/ssh-action@master
+              with:
+                  host: ${{ secrets.HOST }}
+                  username: root
+                  key: ${{ secrets.SSH_PRIVATE_KEY }}
+                  script: |
+                      /var/www/anonbox/deploy.sh
+```
+
+## Phase 1️⃣1️⃣ : Tester le déploiement
+
+Commit et push ton code :
+
+```bash
+git add .
+git commit -m "Initial deploy"
+git push origin main
+```
+
+Sur GitHub → Actions
+
+- Clique sur ton workflow → Voir les logs
+- Si tout est correct, tu verras :
+
+```
+root
+srv1373882
+Déploiement terminé !
+```
+
+## Phase 1️⃣2️⃣ : Vérifier sur le VPS
+
+```bash
+ls -l /var/www/anonbox/current
+```
+
+Tu dois voir ta dernière release.
+
+## Phase 1️⃣3️⃣ : Astuces DevOps
+
+- **Zero-downtime** : toujours utiliser `ln -sfn current` pour changer de version sans interrompre le site
+- **Rollback** : garder plusieurs dossiers `releases/` pour revenir en arrière si besoin
+- **Sécurité** : créer un utilisateur `deploy` plutôt que `root`
+- **Services** : relancer `php-fpm`, queue Laravel, nginx si nécessaire
+
 ## 🧹 Nettoyage final
 
 Si tout fonctionne (200 OK sur ton domaine) :
